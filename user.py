@@ -16,7 +16,7 @@ class User:
 
     def bind_user_issues(self):
         user_issues = get_issues_assigned_to(self.redmine_id)
-        self.issues = user_issues
+        self.issues = sorted(user_issues, key=lambda x: x[1])
         for issue in self.issues:
             self.issues_id.add(issue[1])
 
@@ -31,7 +31,21 @@ class User:
                 send_message(self.telegram_id, message)
                 sleep(2.0)
             self.issues += new_issues
+            self.issues.sort(key=lambda x: x[1])
             print(self.issues)
+
+    def check_changed_issues(self):
+        issues = sorted([issue for issue in get_issues_assigned_to(self.redmine_id) if issue[1] in self.issues_id],
+                        key=lambda x: x[1])
+        for iter in range(len(self.issues)):
+            redmine_changed_time = issues[iter][3]
+            local_changed_time = self.issues[iter][3]
+            delta = redmine_changed_time - local_changed_time
+            if abs(delta.seconds) > 2:
+                self.issues[iter] = issues[iter]
+                message = create_issue_change_message(self.issues[iter])
+                send_message(self.telegram_id, message)
+                sleep(2.0)
 
     @staticmethod
     def create_user(user_info):
