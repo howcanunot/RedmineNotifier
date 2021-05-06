@@ -16,38 +16,45 @@ class User:
 
     def bind_user_issues(self):
         user_issues = get_issues_assigned_to(self.redmine_id)
-        self.issues = sorted(user_issues, key=lambda x: x[1])
+        self.issues = sorted(user_issues, key=lambda x: x.id)
         for issue in self.issues:
-            self.issues_id.add(issue[1])
+            self.issues_id.add(issue.id)
 
     def check_new_issues(self):
         issues = get_issues_assigned_to(self.redmine_id)
         if len(issues) > len(self.issues):
-            new_issues = [issue for issue in issues if issue[1] not in self.issues_id]
+            new_issues = [issue for issue in issues if issue.id not in self.issues_id]
             print(new_issues)
             for issue in new_issues:
-                self.issues_id.add(issue[1])
+                self.issues_id.add(issue.id)
                 message = create_issue_assigned_message(issue)
                 send_message(self.telegram_id, message)
                 sleep(2.0)
             self.issues += new_issues
-            self.issues.sort(key=lambda x: x[1])
+            self.issues.sort(key=lambda x: x.id)
             print(self.issues)
 
     def check_changed_issues(self):
-        issues = sorted([issue for issue in get_issues_assigned_to(self.redmine_id) if issue[1] in self.issues_id],
-                        key=lambda x: x[1])
+        issues = sorted([issue for issue in get_issues_assigned_to(self.redmine_id) if issue.id in self.issues_id],
+                        key=lambda x: x.id)
         for iter in range(len(self.issues)):
-            if int(issues[iter][8]) == int(self.id):
-                continue
-            redmine_changed_time = issues[iter][3]
-            local_changed_time = self.issues[iter][3]
+            # if User.get_user_last_update_id(issues[iter]) == int(self.id):
+            #     continue
+            redmine_changed_time = issues[iter].updated_on
+            local_changed_time = self.issues[iter].updated_on
             delta = redmine_changed_time - local_changed_time
             if abs(delta.seconds) > 2:
-                message = create_issue_change_message(self.issues[iter], issues[iter])
+                message = create_issue_change_message(issues[iter])
                 self.issues[iter] = issues[iter]
                 send_message(self.telegram_id, message)
                 sleep(2.0)
+
+    @staticmethod
+    def get_user_last_update_id(issue):
+        issue_id = -1
+        if issue.journals.total_count > 0:
+            issue_id = int(list(issue.journals.values())[-1]['user']['id'])
+        return issue_id
 
     @staticmethod
     def create_user(user_info):
