@@ -38,12 +38,14 @@ class User:
         issues = sorted([issue for issue in get_issues_assigned_to(self.redmine_id) if issue[1] in self.issues_id],
                         key=lambda x: x[1])
         for iter in range(len(self.issues)):
+            if int(issues[iter][8]) == int(self.id):
+                continue
             redmine_changed_time = issues[iter][3]
             local_changed_time = self.issues[iter][3]
             delta = redmine_changed_time - local_changed_time
             if abs(delta.seconds) > 2:
+                message = create_issue_change_message(self.issues[iter], issues[iter])
                 self.issues[iter] = issues[iter]
-                message = create_issue_change_message(self.issues[iter])
                 send_message(self.telegram_id, message)
                 sleep(2.0)
 
