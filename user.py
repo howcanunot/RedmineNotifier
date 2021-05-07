@@ -2,14 +2,14 @@ from redmine_issue_monitor import get_issues_assigned_to
 from message_factory import create_issue_change_message, create_issue_assigned_message
 from bot import send_message
 from time import sleep
+from logger import logger
 
 
 class User:
-
     __users_telegram_ids = {}
 
-    def __init__(self, id, redmine_id, telegram_id, name):
-        self.id = id
+    def __init__(self, user_id, redmine_id, telegram_id, name):
+        self.id = user_id
         self.redmine_id = redmine_id
         self.telegram_id = telegram_id
         self.name = name
@@ -27,12 +27,18 @@ class User:
         issues = get_issues_assigned_to(self.redmine_id)
         if len(issues) > len(self.issues):
             new_issues = [issue for issue in issues if issue.id not in self.issues_id]
-            print(len(self.issues))
+            # print(len(self.issues))
             for issue in new_issues:
-                self.issues_id.add(issue.id)
-                message = create_issue_assigned_message(issue)
-                send_message(self.telegram_id, message)
-                sleep(2.0)
+                try:
+                    self.issues_id.add(issue.id)
+                    message = create_issue_assigned_message(issue)
+                    send_message(self.telegram_id, message)
+                    logger.debug('Assigned Task#{} for {}'.format(issue.id, self.name))
+                    sleep(2.0)
+                except Exception as exception:
+                    logger.error('Raised exception while assign Task#{} for {}: {}'.format(issue.id, self.name,
+                                                                                           exception))
+                    return
             self.issues += new_issues
             self.issues.sort(key=lambda x: x.id)
 
@@ -42,21 +48,27 @@ class User:
 
         if len(self.issues) != len(issues):
             self.__delete_empty_issues(issues)
-
-        for iter in range(len(self.issues)):
-            # if User.get_user_last_update_id(issues[iter]) == int(self.id):
-            #     continue
-            redmine_changed_time = issues[iter].updated_on
-            local_changed_time = self.issues[iter].updated_on
-            delta = redmine_changed_time - local_changed_time
-            if abs(delta.seconds) > 2:
-                message = create_issue_change_message(issues[iter])
-                self.issues[iter] = issues[iter]
-                send_message(self.telegram_id, message)
-                sleep(2.0)
-                for watcher in list(issues[iter].watchers.values()):
-                    send_message(User.__users_telegram_ids[watcher['id']], message)
+        try:
+            for index in range(len(self.issues)):
+                redmine_changed_time = issues[index].updated_on
+                local_changed_time = self.issues[index].updated_on
+                delta = redmine_changed_time - local_changed_time
+                if abs(delta.seconds) > 2:
+                    message = create_issue_change_message(issues[index])
+                    self.issues[index] = issues[index]
+                    if User.get_user_last_update_id(issues[index]) != int(self.id):
+                        send_message(self.telegram_id, message)
+                        logger.debug('Updated Task#{} for {}'.format(self.issues[index].id, self.name))
                     sleep(2.0)
+                    for watcher in list(issues[index].watchers.values()):
+                        send_message(User.__users_telegram_ids[watcher['id']], message)
+                        sleep(2.0)
+                        logger.debug('Watcher {} Notified about Task#{} update'.format(watcher['name'],
+                                                                                       self.issues[index].id))
+        except Exception as exception:
+            logger.error('Raised exception while assign Updating task for {}: {}'.format(self.name,
+                                                                                         exception))
+            return
 
     def __delete_empty_issues(self, issues):
         issues_id = set()
@@ -65,7 +77,6 @@ class User:
         empty_issues_ids = self.issues_id - issues_id
         self.issues = [issue for issue in self.issues if issue.id not in empty_issues_ids]
         self.issues_id = issues_id
-
 
     @staticmethod
     def get_user_last_update_id(issue):
