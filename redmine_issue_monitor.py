@@ -2,7 +2,7 @@ from redminelib import Redmine
 
 URL = 'http://localhost:3000/'
 LOGIN = 'admin'
-PASSW = '12345678'
+PASSW = '123456789'
 
 redmine = Redmine(URL, username=LOGIN, password=PASSW)
 
@@ -29,10 +29,18 @@ def get_issues_assigned_to(redmine_user_id):
         if issue.status.id != 5:
             if hasattr(issue, 'assigned_to'):
                 if hasattr(issue.assigned_to, 'id') and hasattr(issue.assigned_to, 'name'):
-                    last_update_user_id = -1
-                    if len(list(issue.journals.values())) > 0:
-                        last_update_user_id = list(issue.journals.values())[-1]['user']['id']
-                    result.append((None, issue.id, (issue.assigned_to.id, issue.assigned_to.name), issue.updated_on,
-                                   (issue.status.id, issue.status.name), issue.subject, [],
-                                   issue.tracker.name, last_update_user_id))
+                    # last_update_user_id = -1
+                    # if len(list(issue.journals.values())) > 0:
+                    #     last_update_user_id = list(issue.journals.values())[-1]['user']['id']
+                    # result.append((None, issue.id, (issue.assigned_to.id, issue.assigned_to.name), issue.updated_on,
+                    #                (issue.status.id, issue.status.name), issue.subject, [],
+                    #                issue.tracker.name, issue.journals))
+                    result.append(issue)
     return result
+
+
+def update_issue(redmine_issue_id, status_id):
+    redmine.issue.update(
+        resource_id=redmine_issue_id,
+        status_id=status_id
+    )
