@@ -1,5 +1,6 @@
 import sqlite3
-from user import User
+from logger import logger
+import user
 
 
 class SQLHelper:
@@ -23,11 +24,23 @@ class SQLHelper:
             with self.__connection:
                 cursor = self.__connection.cursor()
                 for row in cursor.execute(sql_query_get_all).fetchall():
-                    users.append(User.create_user(row))
+                    users.append(user.User.create_user(row))
         except Exception as exception:
-            print('Exception: {}'.format(exception))
+            logger.error('Raised exception while getting users from User table: {}'.format(exception))
 
         return users
+
+    def get_user(self, telegram_id):
+        sql_query = 'SELECT * FROM User WHERE telegram_user_id=?'
+        result = ""
+        try:
+            with self.__connection:
+                cursor = self.__connection.cursor()
+                result = cursor.execute(sql_query, (telegram_id, )).fetchone()
+        except Exception as exception:
+            logger.error('Raised exception while getting users from User table: {}'.format(exception))
+        return result
+
 
     def __get_issues_from_df(self):
         """ Returns list of issues_id(from redmine) for all issue in Issue table. """
