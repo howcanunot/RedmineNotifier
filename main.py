@@ -10,7 +10,6 @@ def main():
 
     for user in users:
         user.bind_user_issues()
-        print(user.issues)
 
     while True:
         for user in users:
