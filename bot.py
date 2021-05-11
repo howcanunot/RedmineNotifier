@@ -2,13 +2,13 @@
 import threading
 from logger import logger
 from redmine_issue_monitor import get_issues_assigned_to, update_issue
-from message_factory import create_issues_assigned_to_message
 import SQLHelper
 
 import telebot
 from telebot import types
 
-API_TOKEN = '1741073741:AAFRB66ltetVTYHLVtkGWLWIZY8A1L2hyL8'
+API_TOKEN = '1741073741:AAEDqUc_0nwAub2skv44LjOzM3udm6C4mMw'
+
 
 bot = telebot.TeleBot(API_TOKEN)
 
@@ -64,7 +64,11 @@ def event_handler(call):
 def send_welcome(message):
     global user_dict
     telegram_id = '@' + message.chat.username
-    if telegram_id not in user_dict or user_dict[telegram_id] != message.chat.id:
+    if telegram_id not in user_dict:
+        bot.reply_to(message, "It looks like you are not registered in the system. Connect with @vchernokulsky"
+                                      " for help")
+        return
+    if user_dict[telegram_id] != message.chat.id:
         user_dict[telegram_id] = message.chat.id
         __save_bot_chats()
     bot.reply_to(message, "Hi I'm redmine notification bot!", reply_markup=__init_markup())
@@ -73,7 +77,7 @@ def send_welcome(message):
 @bot.message_handler(content_types=['text'])
 def get_new_status(message):
     try:
-        if message.text == 'Update Issue':
+        if message.chat.username in user_dict and message.text == 'Update Issue':
             bot.send_message(message.chat.id, text='Issues assigned to you:',
                              reply_markup=__init_inline_markup(message.chat.id))
     except Exception as exception:
