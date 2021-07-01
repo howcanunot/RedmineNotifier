@@ -1,13 +1,12 @@
 #!/usr/bin/python
 import threading
 from logger import logger
+from config import API_TOKEN
 from redmine_issue_monitor import get_issues_assigned_to, update_issue
 import SQLHelper
 
 import telebot
 from telebot import types
-
-API_TOKEN = '1741073741:AAEDqUc_0nwAub2skv44LjOzM3udm6C4mMw'
 
 
 bot = telebot.TeleBot(API_TOKEN)
